@@ -1,7 +1,7 @@
 import streamlit as st
 from openai import OpenAI
 
-# Ustawienia strony - Mobile Look
+# 1. Konfiguracja
 st.set_page_config(
     page_title="Mediator AI",
     page_icon="🕊️",
@@ -9,7 +9,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Ukrywanie elementów interfejsu Streamlit
+# 2. CSS Hack - Mobile Look
 hide_streamlit_style = """
             <style>
             #MainMenu {visibility: hidden;}
@@ -21,34 +21,35 @@ hide_streamlit_style = """
             """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
-# Nagłówek
+# 3. Nagłówek
 st.title("🕊️ Mediator AI")
-st.markdown("**Twój asystent NVC.** Wpiszcie swoje wersje, a ja poszukam wspólnych potrzeb.")
+st.info("Wpiszcie swoje wersje, a ja poszukam wspólnych potrzeb.")
 
-# Pobieranie klucza API
-# W przyszłości ukryjemy to w "Secrets", teraz dla testu wpisujemy ręcznie
-api_key = st.text_input("Klucz API OpenAI:", type="password", help="Tu wklej swój klucz sk-...")
+# 4. Pobieranie klucza z "Sejfu" (Secrets)
+api_key = st.secrets.get("OPENAI_API_KEY")
 
-st.markdown("---")
+if not api_key:
+    st.error("⚠️ Błąd konfiguracji: Nie znaleziono klucza API w Secrets.")
+    st.stop()
 
-# Interfejs mobilny
+# 5. Interfejs
 st.subheader("Osoba A")
-text_a = st.text_area("Twoja perspektywa (A)", height=100, label_visibility="collapsed", placeholder="Osoba A: Co się stało?")
+text_a = st.text_area("Twoja perspektywa (A)", height=120, label_visibility="collapsed", placeholder="Osoba A: Co się stało?")
 
 st.subheader("Osoba B")
-text_b = st.text_area("Twoja perspektywa (B)", height=100, label_visibility="collapsed", placeholder="Osoba B: Co się stało?")
+text_b = st.text_area("Twoja perspektywa (B)", height=120, label_visibility="collapsed", placeholder="Osoba B: Co się stało?")
 
-# Logika
-def analizuj_konflikt(tekst_a, tekst_b, klucz):
-    client = OpenAI(api_key=klucz)
+# 6. Logika
+def analizuj_konflikt(tekst_a, tekst_b):
+    client = OpenAI(api_key=api_key)
     
     prompt_systemowy = """
-    Jesteś mediatorem NVC.
-    1. Zignoruj ataki.
+    Jesteś mediatorem NVC (Porozumienie Bez Przemocy).
+    1. Zignoruj ataki i oceny.
     2. Wypunktuj FAKTY.
     3. Nazwij UCZUCIA i POTRZEBY obu stron.
     4. Zaproponuj KRÓTKĄ prośbę/rozwiązanie.
-    Formatuj odpowiedź używając pogrubień, aby była czytelna na telefonie.
+    Formatuj odpowiedź używając pogrubień (**tekst**), aby była czytelna na telefonie.
     """
     
     response = client.chat.completions.create(
@@ -61,17 +62,16 @@ def analizuj_konflikt(tekst_a, tekst_b, klucz):
     )
     return response.choices[0].message.content
 
-# Przycisk
+# 7. Przycisk
 if st.button("🔍 Analizuj konflikt", type="primary", use_container_width=True):
-    if not api_key:
-        st.error("🔒 Brakuje klucza API.")
-    elif not text_a or not text_b:
+    if not text_a or not text_b:
         st.warning("⚠️ Obie strony muszą coś wpisać.")
     else:
         with st.spinner('Negocjuję pokój...'):
             try:
-                wynik = analizuj_konflikt(text_a, text_b, api_key)
+                wynik = analizuj_konflikt(text_a, text_b)
                 st.markdown("---")
                 st.markdown(wynik)
+                st.caption("🤖 Analiza AI. W trudnych sprawach skonsultuj się z terapeutą.")
             except Exception as e:
                 st.error(f"Błąd: {e}")
